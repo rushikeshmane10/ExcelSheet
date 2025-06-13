@@ -1,12 +1,13 @@
-import { getColumnLetter } from './cellUtils';
+import { getColumnLetter } from "./cellUtils";
 
 export const parseCellId = (id) => {
   const match = id.match(/^([A-Z]+)([0-9]+)$/);
   if (!match) return null;
   const [, col, row] = match;
-  const colIndex = col
-    .split('')
-    .reduce((acc, char, i) => acc * 26 + (char.charCodeAt(0) - 64), 0) - 1;
+  const colIndex =
+    col
+      .split("")
+      .reduce((acc, char, i) => acc * 26 + (char.charCodeAt(0) - 64), 0) - 1;
   return { row: parseInt(row, 10) - 1, col: colIndex };
 };
 
@@ -24,26 +25,23 @@ export const getRange = (start, end) => {
   return cells;
 };
 
-import { getRange } from './cellUtils';
-import { parseCellId } from './cellUtils';
-
 export const evaluateFormula = (formula, data) => {
-  if (!formula.startsWith('=')) return formula;
+  if (!formula.startsWith("=")) return formula;
 
   try {
     const expression = formula.slice(1).trim(); // Remove '='
     const [fn, argsStr] = expression.split(/\((.*)\)/).filter(Boolean);
     const fnName = fn.toUpperCase();
 
-    if (!['SUM', 'AVERAGE'].includes(fnName)) return '#ERR';
-    if (!argsStr) return '#ERR';
+    if (!["SUM", "AVERAGE"].includes(fnName)) return "#ERR";
+    if (!argsStr) return "#ERR";
 
-    const args = argsStr.split(',').map((s) => s.trim());
+    const args = argsStr.split(",").map((s) => s.trim());
 
     const values = args.flatMap((arg) => {
       // Support range like A1:A5
-      if (arg.includes(':')) {
-        const [start, end] = arg.split(':');
+      if (arg.includes(":")) {
+        const [start, end] = arg.split(":");
         const rangeCells = getRange(start.trim(), end.trim());
         return rangeCells.map(({ row, col }) => {
           const cell = data[row]?.[col];
@@ -65,13 +63,24 @@ export const evaluateFormula = (formula, data) => {
       return isNaN(literal) ? 0 : literal;
     });
 
-    if (fnName === 'SUM') return values.reduce((a, b) => a + b, 0);
-    if (fnName === 'AVERAGE') return values.length ? values.reduce((a, b) => a + b, 0) / values.length : 0;
+    if (fnName === "SUM") return values.reduce((a, b) => a + b, 0);
+    if (fnName === "AVERAGE")
+      return values.length
+        ? values.reduce((a, b) => a + b, 0) / values.length
+        : 0;
 
-    return '#ERR';
+    return "#ERR";
   } catch (err) {
-    console.error('Formula error:', err);
-    return '#ERR';
+    console.error("Formula error:", err);
+    return "#ERR";
   }
 };
 
+
+const columnToIndex = (letters) => {
+  let col = 0;
+  for (let i = 0; i < letters.length; i++) {
+    col = col * 26 + (letters.charCodeAt(i) - 65 + 1);
+  }
+  return col - 1;
+};

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import Cell from "./Cell";
 import GridControls from "./GridControls";
+import FormattingToolbar from "./FormattingToolbar";
 import { generateCellId, getColumnLetter } from "../utils/cellUtils";
 import { evaluateFormula } from "../utils/formulaEngine";
 
@@ -10,6 +11,8 @@ const DEFAULT_COLS = 10;
 const Spreadsheet = () => {
   const [rows, setRows] = useState(DEFAULT_ROWS);
   const [cols, setCols] = useState(DEFAULT_COLS);
+  const [selectedCell, setSelectedCell] = useState(null);
+
   const [data, setData] = useState(() =>
     Array.from({ length: DEFAULT_ROWS }, (_, row) =>
       Array.from({ length: DEFAULT_COLS }, (_, col) => ({
@@ -20,47 +23,40 @@ const Spreadsheet = () => {
     )
   );
 
+  const handleChange = (id, value) => {
+    const newData = data.map((row) =>
+      row.map((cell) => (cell.id === id ? { ...cell, value } : cell))
+    );
 
-const handleChange = (id, value) => {
-  
-  const newData = data.map((row) =>
-    row.map((cell) =>
-      cell.id === id ? { ...cell, value } : cell
-    )
-  );
+    const updatedData = newData.map((row) =>
+      row.map((cell) => {
+        const computedValue = cell.value.startsWith("=")
+          ? evaluateFormula(cell.value, newData)
+          : cell.value;
+        return { ...cell, computedValue };
+      })
+    );
 
- 
-  const updatedData = newData.map((row) =>
-    row.map((cell) => {
-      const computedValue = cell.value.startsWith('=')
-        ? evaluateFormula(cell.value, newData)
-        : cell.value;
-      return { ...cell, computedValue };
-    })
-  );
+    setData(updatedData);
+  };
 
-  setData(updatedData);
-};
-
-
-//  useEffect(() => {
-//   setData((prevData) =>
-//     prevData.map((row) =>
-//       row.map((cell) => {
-//         const computedValue = cell.value.startsWith("=")
-//           ? evaluateFormula(cell.value, prevData)
-//           : cell.value;
-//         return { ...cell, computedValue };
-//       })
-//     )
-//   );
-// }, [
-//   data.length,
-//   rows,
-//   cols,
-//   JSON.stringify(data.map((row) => row.map((c) => c.value))),
-// ]);
-
+  //  useEffect(() => {
+  //   setData((prevData) =>
+  //     prevData.map((row) =>
+  //       row.map((cell) => {
+  //         const computedValue = cell.value.startsWith("=")
+  //           ? evaluateFormula(cell.value, prevData)
+  //           : cell.value;
+  //         return { ...cell, computedValue };
+  //       })
+  //     )
+  //   );
+  // }, [
+  //   data.length,
+  //   rows,
+  //   cols,
+  //   JSON.stringify(data.map((row) => row.map((c) => c.value))),
+  // ]);
 
   const addRow = () => {
     const newRowIndex = data.length;
@@ -87,10 +83,38 @@ const handleChange = (id, value) => {
     setCols((c) => c + 1);
   };
 
+  const applyFormatting = (type, value) => {
+    if (!selectedCell) return;
+
+    const updatedData = data.map((row) =>
+      row.map((cell) =>
+        cell.id === selectedCell.id
+          ? {
+              ...cell,
+              formatting: {
+                ...cell.formatting,
+                [type]: value,
+              },
+            }
+          : cell
+      )
+    );
+
+    setData(updatedData);
+
+    const updatedSelected = updatedData
+      .flat()
+      .find((cell) => cell.id === selectedCell.id);
+    setSelectedCell(updatedSelected);
+  };
+
   return (
     <div className="p-4">
       <GridControls onAddRow={addRow} onAddColumn={addColumn} />
-
+      <FormattingToolbar
+        onFormat={applyFormatting}
+        selectedCell={selectedCell}
+      />
       <div className="overflow-x-auto max-w-full">
         <table className="table-auto border-collapse min-w-max">
           <thead>
@@ -108,7 +132,13 @@ const handleChange = (id, value) => {
               <tr key={rowIndex}>
                 <th className="border p-1 bg-gray-100">{rowIndex + 1}</th>
                 {row.map((cell) => (
-                  <Cell key={cell.id} cell={cell} onChange={handleChange} />
+                  <Cell
+                    key={cell.id}
+                    cell={cell}
+                    onChange={handleChange}
+                    onSelect={setSelectedCell}
+                    isSelected={selectedCell?.id === cell.id}
+                  />
                 ))}
               </tr>
             ))}

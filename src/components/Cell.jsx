@@ -1,15 +1,23 @@
-const Cell = ({ cell, onChange }) => {
+const Cell = ({ cell, onChange, onSelect, isSelected }) => {
+  const handleChange = (e) => onChange(cell.id, e.target.value);
+  const handleClick = () => onSelect(cell); 
   return (
-    <td className="border p-1 min-w-[100px]">
+    <td
+      onClick={handleClick}
+      className={`border p-1 w-24 cursor-pointer ${
+        isSelected ? "ring-2 ring-blue-500" : ""
+      }`}
+      style={{
+        backgroundColor: cell.formatting?.backgroundColor || "transparent",
+      }}
+    >
       <input
-        type="text"
         value={cell.value}
-        onChange={(e) => onChange(cell.id, e.target.value)}
-        className="w-full outline-none bg-transparent"
+        onChange={handleChange}
+        className={`w-full px-1 py-0.5 text-sm outline-none bg-transparent ${
+          cell.formatting?.bold ? "font-bold" : ""
+        }`}
       />
-      {cell.value.startsWith('=') && (
-        <div className="text-xs text-gray-500">{cell.computedValue}</div>
-      )}
     </td>
   );
 };
