@@ -15,6 +15,6 @@ Click a cell and press Copy.
 
 Click the target cell and press Paste.
 
-Formulas = example =sum(B1,C3)  use capital letters for cell and use comma (,) between cell  
+Formulas = example =sum(B1:C3) 
 
 
