@@ -1,148 +1,123 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import Cell from "./Cell";
 import GridControls from "./GridControls";
 import FormattingToolbar from "./FormattingToolbar";
 import { generateCellId, getColumnLetter } from "../utils/cellUtils";
-import { evaluateFormula } from "../utils/formulaEngine";
-
-const DEFAULT_ROWS = 10;
-const DEFAULT_COLS = 10;
+import FileControls from "./FileControls";
+import CopyPasteControls from "./CopyPasteControls";
+import { useSpreadsheet } from "../hooks/useSpreadsheet.JSX";
 
 const Spreadsheet = () => {
-  const [rows, setRows] = useState(DEFAULT_ROWS);
-  const [cols, setCols] = useState(DEFAULT_COLS);
-  const [selectedCell, setSelectedCell] = useState(null);
+  const {
+    rows,
+    cols,
+    data,
+    selectedCell,
+    copiedCell,
+    setRows,
+    setCols,
+    setData,
+    setSelectedCell,
+    handleChange,
+    addRow,
+    addColumn,
+    applyFormatting,
+    handleCopy,
+    handlePaste,
+  } = useSpreadsheet();
 
-  const [data, setData] = useState(() =>
-    Array.from({ length: DEFAULT_ROWS }, (_, row) =>
-      Array.from({ length: DEFAULT_COLS }, (_, col) => ({
-        id: generateCellId(row, col),
-        value: "",
-        computedValue: "",
-      }))
-    )
-  );
+  const renderedHeaders = useMemo(() => {
+    const selectedColLetter = selectedCell
+      ? selectedCell.id.match(/[A-Z]+/)[0]
+      : null;
 
-  const handleChange = (id, value) => {
-    const newData = data.map((row) =>
-      row.map((cell) => (cell.id === id ? { ...cell, value } : cell))
+    return (
+      <>
+        <th className="sticky left-0 z-10 bg-gray-100 border border-gray-300 p-2 text-center shadow-sm"></th>
+        {Array.from({ length: cols }, (_, colIndex) => {
+          const colLetter = getColumnLetter(colIndex);
+          const isSelectedCol = colLetter === selectedColLetter;
+
+          return (
+            <th
+              key={colIndex}
+              className={`border border-gray-300 p-2 text-center shadow-sm transition-colors ${
+                isSelectedCol
+                  ? "bg-blue-100 text-blue-700 font-semibold"
+                  : "bg-gray-100"
+              }`}
+            >
+              {colLetter}
+            </th>
+          );
+        })}
+      </>
     );
+  }, [cols, selectedCell]);
 
-    const updatedData = newData.map((row) =>
-      row.map((cell) => {
-        const computedValue = cell.value.startsWith("=")
-          ? evaluateFormula(cell.value, newData)
-          : cell.value;
-        return { ...cell, computedValue };
-      })
-    );
+  const renderedBody = useMemo(() => {
+    const selectedRowNumber = selectedCell
+      ? parseInt(selectedCell.id.match(/\d+/)[0], 10)
+      : null;
 
-    setData(updatedData);
-  };
+    return data.map((row, rowIndex) => {
+      const isSelectedRow = selectedRowNumber === rowIndex + 1;
 
-  //  useEffect(() => {
-  //   setData((prevData) =>
-  //     prevData.map((row) =>
-  //       row.map((cell) => {
-  //         const computedValue = cell.value.startsWith("=")
-  //           ? evaluateFormula(cell.value, prevData)
-  //           : cell.value;
-  //         return { ...cell, computedValue };
-  //       })
-  //     )
-  //   );
-  // }, [
-  //   data.length,
-  //   rows,
-  //   cols,
-  //   JSON.stringify(data.map((row) => row.map((c) => c.value))),
-  // ]);
-
-  const addRow = () => {
-    const newRowIndex = data.length;
-    const newRow = Array.from({ length: cols }, (_, col) => ({
-      id: generateCellId(newRowIndex, col),
-      value: "",
-      computedValue: "",
-    }));
-    setData((prev) => [...prev, newRow]);
-    setRows((r) => r + 1);
-  };
-
-  const addColumn = () => {
-    const newColIndex = cols;
-    const updatedData = data.map((row, rowIndex) => [
-      ...row,
-      {
-        id: generateCellId(rowIndex, newColIndex),
-        value: "",
-        computedValue: "",
-      },
-    ]);
-    setData(updatedData);
-    setCols((c) => c + 1);
-  };
-
-  const applyFormatting = (type, value) => {
-    if (!selectedCell) return;
-
-    const updatedData = data.map((row) =>
-      row.map((cell) =>
-        cell.id === selectedCell.id
-          ? {
-              ...cell,
-              formatting: {
-                ...cell.formatting,
-                [type]: value,
-              },
-            }
-          : cell
-      )
-    );
-
-    setData(updatedData);
-
-    const updatedSelected = updatedData
-      .flat()
-      .find((cell) => cell.id === selectedCell.id);
-    setSelectedCell(updatedSelected);
-  };
+      return (
+        <tr key={rowIndex} className="even:bg-gray-50">
+          <th
+            className={`sticky left-0 z-10 border border-gray-300 p-2 text-center text-gray-500 transition-colors ${
+              isSelectedRow
+                ? "bg-blue-100 text-blue-700 font-semibold"
+                : "bg-gray-50"
+            }`}
+          >
+            {rowIndex + 1}
+          </th>
+          {row.map((cell) => (
+            <Cell
+              key={cell.id}
+              cell={cell}
+              data={data}
+              onChange={handleChange}
+              onSelect={setSelectedCell}
+              isSelected={selectedCell?.id === cell.id}
+            />
+          ))}
+        </tr>
+      );
+    });
+  }, [data, selectedCell?.id]);
 
   return (
-    <div className="p-4">
-      <GridControls onAddRow={addRow} onAddColumn={addColumn} />
-      <FormattingToolbar
-        onFormat={applyFormatting}
-        selectedCell={selectedCell}
-      />
-      <div className="overflow-x-auto max-w-full">
-        <table className="table-auto border-collapse min-w-max">
+    <div className="">
+      <div className="flex  items-center gap-4">
+        <FileControls
+          rows={rows}
+          cols={cols}
+          data={data}
+          setRows={setRows}
+          setCols={setCols}
+          setData={setData}
+        />
+
+        <GridControls onAddRow={addRow} onAddColumn={addColumn} />
+        <FormattingToolbar
+          onFormat={applyFormatting}
+          selectedCell={selectedCell}
+        />
+        <CopyPasteControls
+          onCopy={handleCopy}
+          onPaste={handlePaste}
+          isPasteDisabled={!copiedCell || !selectedCell}
+        />
+      </div>
+      <div className="bg-white rounded-xl shadow-xl p-4 overflow-auto border border-gray-300">
+        <table className="table-fixed border-separate border-spacing-0 min-w-max w-full text-sm font-medium text-gray-800">
           <thead>
-            <tr>
-              <th className="border p-1 bg-gray-100"></th>
-              {Array.from({ length: cols }, (_, colIndex) => (
-                <th key={colIndex} className="border p-1 bg-gray-100">
-                  {getColumnLetter(colIndex)}
-                </th>
-              ))}
-            </tr>
+            <tr className="bg-gray-100 text-gray-700">{renderedHeaders}</tr>
           </thead>
-          <tbody>
-            {data.map((row, rowIndex) => (
-              <tr key={rowIndex}>
-                <th className="border p-1 bg-gray-100">{rowIndex + 1}</th>
-                {row.map((cell) => (
-                  <Cell
-                    key={cell.id}
-                    cell={cell}
-                    onChange={handleChange}
-                    onSelect={setSelectedCell}
-                    isSelected={selectedCell?.id === cell.id}
-                  />
-                ))}
-              </tr>
-            ))}
-          </tbody>
+          <tbody>{renderedBody}</tbody>
         </table>
       </div>
     </div>

@@ -1,4 +1,3 @@
-import { getColumnLetter } from "./cellUtils";
 
 export const parseCellId = (id) => {
   const match = id.match(/^([A-Z]+)([0-9]+)$/);
@@ -27,9 +26,8 @@ export const getRange = (start, end) => {
 
 export const evaluateFormula = (formula, data) => {
   if (!formula.startsWith("=")) return formula;
-
   try {
-    const expression = formula.slice(1).trim(); // Remove '='
+    const expression = formula.slice(1).trim(); 
     const [fn, argsStr] = expression.split(/\((.*)\)/).filter(Boolean);
     const fnName = fn.toUpperCase();
 
@@ -39,26 +37,23 @@ export const evaluateFormula = (formula, data) => {
     const args = argsStr.split(",").map((s) => s.trim());
 
     const values = args.flatMap((arg) => {
-      // Support range like A1:A5
       if (arg.includes(":")) {
         const [start, end] = arg.split(":");
         const rangeCells = getRange(start.trim(), end.trim());
         return rangeCells.map(({ row, col }) => {
           const cell = data[row]?.[col];
-          const val = parseFloat(cell?.computedValue ?? cell?.value ?? 0);
+          const val = parseFloat(cell?.value ?? 0);
           return isNaN(val) ? 0 : val;
         });
       }
 
-      // Support single cell ID
       if (/^[A-Z]+[0-9]+$/i.test(arg)) {
         const { row, col } = parseCellId(arg) || {};
         const cell = data[row]?.[col];
-        const val = parseFloat(cell?.computedValue ?? cell?.value ?? 0);
+        const val = parseFloat(cell?.value ?? 0);
         return isNaN(val) ? 0 : val;
       }
 
-      // Support literal value (e.g., 1, 2.5)
       const literal = parseFloat(arg);
       return isNaN(literal) ? 0 : literal;
     });
@@ -77,10 +72,4 @@ export const evaluateFormula = (formula, data) => {
 };
 
 
-const columnToIndex = (letters) => {
-  let col = 0;
-  for (let i = 0; i < letters.length; i++) {
-    col = col * 26 + (letters.charCodeAt(i) - 65 + 1);
-  }
-  return col - 1;
-};
+
